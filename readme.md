@@ -11,8 +11,8 @@ This repository contains a simple Python script to download YouTube playlists us
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/barandev/yt_playlist_downloader.git
-    cd yt_playlist_downloader
+    git clone https://github.com/barandev/youtube_playlist_downloader.git
+    cd youtube_playlist_downloader
     ```
 
 2. Install the required Python packages:
