@@ -18,7 +18,7 @@ A powerful, user-friendly desktop application for downloading YouTube playlists 
 
 ### Windows
 
-1. Download the latest release from the [Releases page](https://github.com/yourusername/youtube-playlist-downloader/releases)
+1. Download the latest release from the [Releases page](https://github.com/barandev/youtube-playlist-downloader/releases)
 2. Run the installer or extract the portable version
 3. Launch `YouTube Playlist Downloader.exe`
 
@@ -26,7 +26,7 @@ A powerful, user-friendly desktop application for downloading YouTube playlists 
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/youtube-playlist-downloader.git
+   git clone https://github.com/barandev/youtube-playlist-downloader.git
    cd youtube-playlist-downloader
 2. Install dependencies:
    ```bash
