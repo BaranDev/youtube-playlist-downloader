@@ -1,76 +1,91 @@
+<p align="center">
+  <img src="docs/images/icon.png" alt="Youtube Playlist Downloader Logo" width="160"/>
+</p>
+
 # YouTube Playlist Downloader
 
-This repository contains a simple Python script to download YouTube playlists using `yt-dlp`. The script downloads the best video and audio quality available and saves them in the specified output directory.
+A simple yet powerful Python application to download entire YouTube playlists in high quality MP4 format.
+
+## Features
+
+- Downloads complete YouTube playlists
+- Extracts videos in high quality (best video + best audio)
+- Automatically converts to MP4 format
+- Numbers files according to playlist order
+- Handles errors gracefully without stopping the entire process
 
 ## Requirements
 
-- Python 3.x
-- `yt-dlp`
+- Python 3.6+
+- yt-dlp
+- FFmpeg (for video conversion)
 
 ## Installation
 
-1. Clone the repository:
-    ```sh
-    git clone https://github.com/barandev/youtube_playlist_downloader.git
-    cd youtube_playlist_downloader
+1. Clone this repository:
+    ```bash
+    git clone https://github.com/barandev/youtube-playlist-downloader.git
+    cd youtube-playlist-downloader
     ```
 
-2. Install the required Python packages:
-    ```sh
+2. Install the required dependencies:
+    ```bash
     pip install yt-dlp
     ```
 
+3. Install FFmpeg:
+    - **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add to PATH
+    - **macOS**: `WIP`
+    - **Linux**: `WIP`
+  
 ## Usage
 
-1. Run the script:
-    ```sh
-    python main.py
-    ```
+Run the script:
+```bash
+python main.py
+```
 
-2. Enter the YouTube playlist URL when prompted.
+When prompted, enter the URL of the YouTube playlist you want to download:
+```
+Enter YouTube playlist URL: https://www.youtube.com/playlist?list=PLexample123456
+```
 
-The downloaded videos will be saved in the `downloads` directory by default.
+The videos will be downloaded to a `downloads` folder in the current directory, named according to their position in the playlist:
+```
+downloads/
+  1 - First Video.mp4
+  2 - Second Video.mp4
+  ...
+```
 
-## Options
+## Customization
 
-- You can change the output directory by modifying the `output_dir` parameter in the `download_playlist` function.
+You can modify the `download_playlist` function parameters to change:
+
+- Output directory (default is "downloads")
+- Video format
+- Naming convention
+- Other yt-dlp options
+
+## How It Works
+
+The application uses yt-dlp (a fork of youtube-dl) to:
+
+1. Extract playlist metadata
+2. Download each video in the highest available quality
+3. Merge video and audio streams
+4. Convert the result to MP4 format
+
+## Limitations
+
+- Requires a stable internet connection
+- Download speed depends on your connection
+- Some videos may be unavailable due to regional restrictions or privacy settings
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is released under the MIT License.
 
-## Contributing
+## Disclaimer !
 
-Contributions are welcome! Please open an issue or submit a pull request for any changes.
-
-## Acknowledgements
-
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) for providing the downloading functionality.
-
-## Additional Requirements
-
-- `ffmpeg` is required for post-processing. You can install it using one of the following methods:
-
-    - Release essentials:
-        ```sh
-        choco install ffmpeg
-        winget install "FFmpeg (Essentials Build)"
-        ```
-
-    - Release full:
-        ```sh
-        choco install ffmpeg-full
-        scoop install ffmpeg
-        winget install ffmpeg
-        ```
-
-    - Release full shared:
-        ```sh
-        scoop install ffmpeg-shared
-        winget install "FFmpeg (Shared)"
-        ```
-
-    - Git master:
-        ```sh
-        scoop install ffmpeg-gyan-nightly
-        ```
+This tool is for personal use only. Please respect YouTube's Terms of Service and copyright laws when downloading content.
