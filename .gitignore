@@ -35,3 +35,6 @@ ENV/
 
 # Build files
 *.spec
+
+# Custom
+URL_LIST.csv

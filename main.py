@@ -11,8 +11,15 @@ from PIL import Image, ImageTk
 from io import BytesIO
 import sys
 import humanize
+import csv
+import subprocess
+import platform
 
 # ===== Configuration settings =====
+# CSV file for URL list
+CSV_FILE_NAME = "URL_LIST.csv"
+CSV_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), CSV_FILE_NAME)
+
 # GUI settings
 APP_TITLE = "YouTube Playlist Downloader"
 WINDOW_WIDTH = 700
@@ -79,7 +86,7 @@ def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
+        base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
     except Exception:
         base_path = os.path.abspath(".")
 
@@ -99,6 +106,68 @@ def get_thumbnail(url):
         return None
 
 
+def initialize_csv_file():
+    """Create URL_LIST.csv if it doesn't exist"""
+    if not os.path.exists(CSV_FILE_PATH):
+        try:
+            with open(CSV_FILE_PATH, "w", newline="", encoding="utf-8") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["title", "url"])  # Write header
+                # Add a sample row
+                writer.writerow(
+                    ["Sample Video Title", "https://www.youtube.com/watch?v=example"]
+                )
+            print(f"Created {CSV_FILE_NAME} at {CSV_FILE_PATH}")
+        except Exception as e:
+            print(f"Error creating CSV file: {e}")
+    return CSV_FILE_PATH
+
+
+def open_csv_file():
+    """Open the CSV file with the default application"""
+    try:
+        if platform.system() == "Windows":
+            os.startfile(CSV_FILE_PATH)
+        elif platform.system() == "Darwin":  # macOS
+            subprocess.run(["open", CSV_FILE_PATH])
+        else:  # Linux
+            subprocess.run(["xdg-open", CSV_FILE_PATH])
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not open CSV file: {e}")
+
+
+def read_csv_playlist():
+    """Read video list from CSV file"""
+    videos = []
+    try:
+        with open(CSV_FILE_PATH, "r", newline="", encoding="utf-8") as csvfile:
+            reader = csv.DictReader(csvfile)
+
+            # Normalize header names to lowercase for case-insensitive matching
+            if reader.fieldnames:
+                reader.fieldnames = [
+                    name.lower() if name else name for name in reader.fieldnames
+                ]
+
+            for row_num, row in enumerate(reader, start=1):
+                # Check for both 'title' and 'url' columns (case-insensitive)
+                title = row.get("title", "").strip()
+                url = row.get("url", "").strip()
+
+                if title and url:
+                    videos.append(
+                        {
+                            "title": title,
+                            "url": url,
+                            "row_number": row_num,
+                        }
+                    )
+    except Exception as e:
+        print(f"Error reading CSV file: {e}")
+        return None
+    return videos
+
+
 def format_size(bytes_size):
     """Format bytes to human-readable size"""
     return humanize.naturalsize(bytes_size)
@@ -114,6 +183,47 @@ def format_time(seconds):
     else:
         hours = seconds / 3600
         return f"{hours:.1f} hrs"
+
+
+def normalize_youtube_url(url):
+    """
+    Normalize YouTube URLs to a standard format.
+    Handles both short URLs (youtu.be) and standard URLs.
+    Supports single videos, playlists, and channels.
+
+    Examples:
+    - https://youtu.be/VIDEO_ID -> https://www.youtube.com/watch?v=VIDEO_ID
+    - https://youtu.be/VIDEO_ID?list=PLAYLIST_ID -> https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID
+    - Already normalized URLs are returned as-is
+    """
+    import re
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+    url = url.strip()
+
+    # Handle youtu.be short URLs
+    if "youtu.be" in url:
+        try:
+            parsed = urlparse(url)
+            # Extract video ID from path
+            video_id = parsed.path.lstrip("/")
+
+            # Parse query parameters if any (like list parameter)
+            query_params = parse_qs(parsed.query)
+
+            # Build new URL
+            new_params = {"v": video_id}
+            if "list" in query_params:
+                new_params["list"] = query_params["list"][0]
+
+            query_string = urlencode(new_params)
+            return f"https://www.youtube.com/watch?{query_string}"
+        except Exception as e:
+            print(f"Error normalizing URL: {e}")
+            return url
+
+    # Return other URLs as-is (yt-dlp handles them)
+    return url
 
 
 class DownloadManager:
@@ -153,6 +263,9 @@ class DownloadManager:
                 callback(None, "Please enter a valid URL")
             return
 
+        # Normalize URL to handle both youtu.be and youtube.com formats
+        playlist_url = normalize_youtube_url(playlist_url)
+
         ydl_opts = {
             "quiet": True,
             "extract_flat": True,
@@ -161,7 +274,7 @@ class DownloadManager:
             "force_generic_extractor": False,
         }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
             try:
                 info = ydl.extract_info(playlist_url, download=False)
                 self.current_playlist_info = info
@@ -187,6 +300,9 @@ class DownloadManager:
             if self.status_callback:
                 self.status_callback(STATUS_ERROR.format("Please enter a valid URL"))
             return
+
+        # Normalize URL to handle both youtu.be and youtube.com formats
+        playlist_url = normalize_youtube_url(playlist_url)
 
         # Create a unique ID for this download
         download_id = f"{int(time.time())}"
@@ -275,7 +391,7 @@ class DownloadManager:
         self.save_history()
 
         # Start download
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
             try:
                 # Update status
                 if self.status_callback:
@@ -341,6 +457,286 @@ class DownloadManager:
                     del self.last_update_time[download_id]
                 if download_id in self.download_speeds:
                     del self.download_speeds[download_id]
+
+    def download_from_csv(
+        self,
+        csv_videos,
+        output_dir,
+        format_option,
+        selected_indices=None,
+        save_thumbnail=False,
+    ):
+        """Download videos from CSV list"""
+        if not csv_videos:
+            if self.status_callback:
+                self.status_callback(STATUS_ERROR.format("No videos found in CSV"))
+            return
+
+        # Create a unique ID for this download
+        download_id = f"{int(time.time())}"
+        self.stop_events[download_id] = Event()
+        self.pause_events[download_id] = Event()
+
+        # Prepare for download metrics
+        self.last_update_time[download_id] = time.time()
+        self.download_speeds[download_id] = []
+
+        # Create output directory if it doesn't exist
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
+        # Format selection
+        format_str = next(
+            (f for _, f in FORMAT_OPTIONS if f == format_option), FORMAT_OPTIONS[0][1]
+        )
+
+        # Setup postprocessors
+        postprocessors = []
+        if "Audio Only" in format_option:
+            postprocessors.append(
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            )
+        else:
+            postprocessors.append(
+                {"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}
+            )
+
+        # Add merge output format to prevent leftover files
+        postprocessors.append(
+            {
+                "key": "FFmpegMetadata",
+                "add_metadata": True,
+            }
+        )
+
+        # Filter selected videos
+        videos_to_download = csv_videos
+        if selected_indices and len(selected_indices) > 0:
+            videos_to_download = [
+                csv_videos[i] for i in selected_indices if i < len(csv_videos)
+            ]
+
+        # Save to history
+        history_entry = {
+            "id": download_id,
+            "url": "CSV Playlist",
+            "output_dir": output_dir,
+            "format": format_option,
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": "started",
+            "title": "CSV Playlist",
+            "videos_count": len(videos_to_download),
+        }
+        self.history.append(history_entry)
+        self.save_history()
+
+        # Update status
+        if self.status_callback:
+            self.status_callback(
+                {"status": STATUS_DOWNLOADING, "download_id": download_id}
+            )
+
+        # Download each video
+        try:
+            for idx, video in enumerate(videos_to_download, 1):
+                # Check if download was stopped
+                if self.stop_events[download_id].is_set():
+                    if self.status_callback:
+                        self.status_callback(
+                            {"status": STATUS_STOPPED, "download_id": download_id}
+                        )
+
+                    # Update history
+                    for entry in self.history:
+                        if entry["id"] == download_id:
+                            entry["status"] = "stopped"
+                            break
+                    self.save_history()
+                    return
+
+                # Handle pausing
+                while self.pause_events.get(download_id, Event()).is_set():
+                    if self.status_callback:
+                        self.status_callback(
+                            {"status": STATUS_PAUSED, "download_id": download_id}
+                        )
+                    time.sleep(0.5)
+                    if self.stop_events.get(download_id, Event()).is_set():
+                        break
+
+                # Custom output template with row number
+                output_template = f"{video['row_number']}. %(title)s.%(ext)s"
+
+                # Download options for single video
+                ydl_opts = {
+                    "format": format_str,
+                    "outtmpl": os.path.join(output_dir, output_template),
+                    "ignoreerrors": True,
+                    "quiet": False,
+                    "postprocessors": postprocessors,
+                    "writethumbnail": save_thumbnail,
+                    "progress_hooks": [
+                        lambda d, vidx=idx, vcount=len(
+                            videos_to_download
+                        ): self.update_progress_csv(d, download_id, vidx, vcount)
+                    ],
+                    "noplaylist": True,
+                    "continuedl": True,
+                    "merge_output_format": "mp4",
+                    "keepvideo": False,
+                }
+
+                # Download the video
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
+                    ydl.download([video["url"]])
+
+            # All videos downloaded successfully
+            if self.status_callback:
+                self.status_callback(
+                    {"status": STATUS_COMPLETE, "download_id": download_id}
+                )
+
+            # Update history
+            for entry in self.history:
+                if entry["id"] == download_id:
+                    entry["status"] = "completed"
+                    break
+            self.save_history()
+
+        except Exception as e:
+            error_message = str(e)
+            if self.status_callback:
+                self.status_callback(
+                    {
+                        "status": STATUS_ERROR.format(error_message),
+                        "download_id": download_id,
+                    }
+                )
+
+            # Update history
+            for entry in self.history:
+                if entry["id"] == download_id:
+                    entry["status"] = "error"
+                    entry["error"] = error_message
+                    break
+            self.save_history()
+
+        finally:
+            # Clean up
+            if download_id in self.stop_events:
+                del self.stop_events[download_id]
+            if download_id in self.pause_events:
+                del self.pause_events[download_id]
+            if download_id in self.last_update_time:
+                del self.last_update_time[download_id]
+            if download_id in self.download_speeds:
+                del self.download_speeds[download_id]
+
+    def update_progress_csv(self, d, download_id, video_index, video_count):
+        """Update progress information for CSV download"""
+        if self.stop_events.get(download_id, Event()).is_set():
+            raise Exception("Download stopped by user")
+
+        # Handle pausing
+        while self.pause_events.get(download_id, Event()).is_set():
+            if self.status_callback:
+                self.status_callback(
+                    {"status": STATUS_PAUSED, "download_id": download_id}
+                )
+            time.sleep(0.5)
+            if self.stop_events.get(download_id, Event()).is_set():
+                raise Exception("Download stopped by user")
+
+        if d["status"] == "downloading":
+            try:
+                # Calculate speed
+                current_time = time.time()
+                time_diff = current_time - self.last_update_time.get(
+                    download_id, current_time
+                )
+                if time_diff > 0:
+                    # Get downloaded bytes
+                    downloaded_bytes = d.get("downloaded_bytes", 0)
+                    total_bytes = d.get("total_bytes", 0) or d.get(
+                        "total_bytes_estimate", 0
+                    )
+
+                    # Calculate speed
+                    speed = d.get("speed", 0)
+                    if speed:
+                        self.download_speeds[download_id] = self.download_speeds.get(
+                            download_id, []
+                        )[-9:] + [speed]
+
+                    # Calculate average speed
+                    avg_speed = sum(self.download_speeds.get(download_id, [1])) / len(
+                        self.download_speeds.get(download_id, [1])
+                    )
+
+                    # Calculate ETA
+                    eta = d.get("eta", 0)
+                    eta_str = format_time(eta) if eta else "Unknown"
+
+                    # Format speed
+                    speed_str = (
+                        format_size(avg_speed) + "/s" if avg_speed else "Unknown"
+                    )
+
+                    # Format progress
+                    percent = d.get("_percent_str", "Unknown").strip()
+                    filename = os.path.basename(d.get("filename", "Unknown"))
+
+                    # Format size
+                    downloaded_str = format_size(downloaded_bytes)
+                    total_str = format_size(total_bytes) if total_bytes else "Unknown"
+
+                    # Update status
+                    if self.status_callback:
+                        self.status_callback(
+                            {
+                                "status": "downloading",
+                                "download_id": download_id,
+                                "filename": filename,
+                                "percent": percent,
+                                "speed": speed_str,
+                                "eta": eta_str,
+                                "progress": d.get("downloaded_bytes", 0)
+                                / (
+                                    d.get("total_bytes", 1)
+                                    or d.get("total_bytes_estimate", 1)
+                                ),
+                                "downloaded": downloaded_str,
+                                "total": total_str,
+                                "playlist_index": video_index,
+                                "playlist_count": video_count,
+                            }
+                        )
+
+                    # Update last time
+                    self.last_update_time[download_id] = current_time
+            except:
+                pass
+
+        elif d["status"] == "finished":
+            # Video download finished, now processing
+            if self.status_callback:
+                try:
+                    filename = os.path.basename(d.get("filename", "Unknown"))
+                    self.status_callback(
+                        {
+                            "status": "processing",
+                            "download_id": download_id,
+                            "filename": filename,
+                            "playlist_index": video_index,
+                            "playlist_count": video_count,
+                        }
+                    )
+                except:
+                    pass
 
     def update_progress(self, d, download_id):
         """Update progress information for a specific download"""
@@ -544,6 +940,8 @@ class PlaylistDownloaderApp:
         # Current download info
         self.active_download_id = None
         self.is_paused = False
+        self.csv_mode = False  # Track if we're in CSV mode
+        self.csv_videos = []  # Store videos from CSV
 
         # Initialize variables
         self.output_dir = tk.StringVar(value=DEFAULT_OUTPUT_DIR)
@@ -691,7 +1089,7 @@ class PlaylistDownloaderApp:
         url_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
 
         self.url_entry = ttk.Entry(input_frame, width=50, style="TEntry")
-        self.url_entry.grid(row=1, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.url_entry.grid(row=1, column=0, sticky="we", padx=(0, 10))
 
         # URL preview button
         self.preview_button = ttk.Button(
@@ -702,6 +1100,28 @@ class PlaylistDownloaderApp:
         )
         self.preview_button.grid(row=1, column=1, padx=5)
 
+        # CSV buttons frame
+        csv_button_frame = ttk.Frame(input_frame, style="Content.TFrame")
+        csv_button_frame.grid(row=2, column=1, columnspan=2, pady=(10, 0), sticky=tk.W)
+
+        # Open CSV button
+        self.open_csv_button = ttk.Button(
+            csv_button_frame,
+            text="Open CSV",
+            style="Secondary.TButton",
+            command=self.open_csv_file,
+        )
+        self.open_csv_button.pack(side=tk.LEFT, padx=(0, 5))
+
+        # Download from CSV button
+        self.csv_download_button = ttk.Button(
+            csv_button_frame,
+            text="Download from CSV",
+            style="Primary.TButton",
+            command=self.load_csv_playlist,
+        )
+        self.csv_download_button.pack(side=tk.LEFT)
+
         # Output directory
         dir_label = ttk.Label(input_frame, text=LABEL_OUTPUT_DIR, style="TLabel")
         dir_label.grid(row=0, column=2, sticky=tk.W, pady=(0, 5), padx=(20, 0))
@@ -709,7 +1129,7 @@ class PlaylistDownloaderApp:
         dir_entry = ttk.Entry(
             input_frame, width=30, textvariable=self.output_dir, style="TEntry"
         )
-        dir_entry.grid(row=1, column=2, sticky=(tk.W, tk.E), padx=(20, 10))
+        dir_entry.grid(row=1, column=2, sticky="we", padx=(20, 10))
 
         # Browse button
         browse_button = ttk.Button(
@@ -722,7 +1142,7 @@ class PlaylistDownloaderApp:
 
         # Format selection
         format_label = ttk.Label(input_frame, text="Format:", style="TLabel")
-        format_label.grid(row=2, column=0, sticky=tk.W, pady=(15, 5))
+        format_label.grid(row=3, column=0, sticky=tk.W, pady=(15, 5))
 
         format_menu = ttk.Combobox(
             input_frame,
@@ -731,7 +1151,7 @@ class PlaylistDownloaderApp:
             state="readonly",
             style="TCombobox",
         )
-        format_menu.grid(row=3, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        format_menu.grid(row=4, column=0, sticky="we", padx=(0, 10))
         format_menu.current(0)
 
         # Configure grid
@@ -1124,6 +1544,44 @@ class PlaylistDownloaderApp:
         # We now use bind_mousewheel_to_canvas() instead
         pass
 
+    def open_csv_file(self):
+        """Open the CSV file for editing"""
+        open_csv_file()
+
+    def load_csv_playlist(self):
+        """Load videos from CSV file and display them"""
+        # Read CSV file
+        csv_videos = read_csv_playlist()
+
+        if csv_videos is None:
+            messagebox.showerror("Error", f"Could not read CSV file: {CSV_FILE_NAME}")
+            return
+
+        if not csv_videos:
+            messagebox.showwarning("Warning", f"No videos found in {CSV_FILE_NAME}")
+            return
+
+        # Set CSV mode
+        self.csv_mode = True
+        self.csv_videos = csv_videos
+
+        # Create a fake playlist info structure for display
+        self.playlist_info = {
+            "title": f"CSV Playlist ({len(csv_videos)} videos)",
+            "uploader": "From CSV File",
+            "entries": [
+                {"id": str(i), "title": video["title"], "url": video["url"]}
+                for i, video in enumerate(csv_videos)
+            ],
+        }
+
+        # Display the playlist
+        self.display_playlist_info(self.playlist_info)
+        self.status_var.set(f"Loaded {len(csv_videos)} videos from CSV")
+
+        # Switch to playlist tab
+        self.notebook.select(0)
+
     def on_history_mousewheel(self, event):
         """Handle mousewheel event for history scrolling"""
         if event.num == 4 or event.delta > 0:
@@ -1137,6 +1595,17 @@ class PlaylistDownloaderApp:
         if not playlist_url:
             messagebox.showerror("Error", "Please enter a YouTube playlist URL")
             return
+
+        # Normalize URL to handle both youtu.be and youtube.com formats
+        playlist_url = normalize_youtube_url(playlist_url)
+
+        # Update the entry with normalized URL
+        self.url_entry.delete(0, tk.END)
+        self.url_entry.insert(0, playlist_url)
+
+        # Reset CSV mode when previewing URL
+        self.csv_mode = False
+        self.csv_videos = []
 
         # Update status
         self.status_var.set(STATUS_PREVIEWING)
@@ -1202,7 +1671,8 @@ class PlaylistDownloaderApp:
             thumbnail = get_thumbnail(info["thumbnail"])
             if thumbnail:
                 self.thumbnail_label.config(image=thumbnail)
-                self.thumbnail_label.image = thumbnail
+                # Keep a reference to prevent garbage collection
+                self.thumbnail_label._image_ref = thumbnail  # type: ignore
 
         # Clear existing videos
         for widget in self.videos_container.winfo_children():
@@ -1341,7 +1811,6 @@ class PlaylistDownloaderApp:
 
     def start_download(self):
         """Start downloading the playlist"""
-        playlist_url = self.url_entry.get().strip()
         output_dir = self.output_dir.get()
         format_option = next(
             (f[1] for f in FORMAT_OPTIONS if f[0] == self.format_var.get()),
@@ -1349,52 +1818,102 @@ class PlaylistDownloaderApp:
         )
         save_thumbnail = self.save_thumbnail_var.get()
 
-        if not playlist_url:
-            messagebox.showerror("Error", "Please enter a YouTube playlist URL")
-            return
+        # Check if we're in CSV mode
+        if self.csv_mode:
+            # Download from CSV
+            if not self.csv_videos:
+                messagebox.showerror("Error", "No videos loaded from CSV")
+                return
 
-        if not self.playlist_info:
-            # Try to preview first
-            self.preview_playlist()
-            return
+            if not self.selected_videos:
+                messagebox.showerror(
+                    "Error", "Please select at least one video to download"
+                )
+                return
 
-        if not self.selected_videos:
-            messagebox.showerror(
-                "Error", "Please select at least one video to download"
+            # Create output directory if it doesn't exist
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir, exist_ok=True)
+
+            # Update UI
+            self.status_var.set(STATUS_DOWNLOADING)
+            self.progress_var.set(0)
+            self.progress_info.config(text="Starting download from CSV...")
+
+            # Enable/disable buttons
+            self.download_button.config(state=tk.DISABLED)
+            self.preview_button.config(state=tk.DISABLED)
+            self.csv_download_button.config(state=tk.DISABLED)
+            self.pause_button.config(state=tk.NORMAL, text=BUTTON_PAUSE)
+            self.stop_button.config(state=tk.NORMAL)
+
+            # Reset pause state
+            self.is_paused = False
+
+            # Start download in a separate thread
+            download_thread = Thread(
+                target=self.download_manager.download_from_csv,
+                args=(
+                    self.csv_videos,
+                    output_dir,
+                    format_option,
+                    self.selected_videos,
+                    save_thumbnail,
+                ),
             )
-            return
+            download_thread.daemon = True
+            download_thread.start()
+        else:
+            # Download from URL
+            playlist_url = self.url_entry.get().strip()
 
-        # Create output directory if it doesn't exist
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir, exist_ok=True)
+            if not playlist_url:
+                messagebox.showerror("Error", "Please enter a YouTube playlist URL")
+                return
 
-        # Update UI
-        self.status_var.set(STATUS_DOWNLOADING)
-        self.progress_var.set(0)
-        self.progress_info.config(text="Starting download...")
+            if not self.playlist_info:
+                # Try to preview first
+                self.preview_playlist()
+                return
 
-        # Enable/disable buttons
-        self.download_button.config(state=tk.DISABLED)
-        self.preview_button.config(state=tk.DISABLED)
-        self.pause_button.config(state=tk.NORMAL, text=BUTTON_PAUSE)
-        self.stop_button.config(state=tk.NORMAL)
+            if not self.selected_videos:
+                messagebox.showerror(
+                    "Error", "Please select at least one video to download"
+                )
+                return
 
-        # Reset pause state
-        self.is_paused = False
+            # Create output directory if it doesn't exist
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir, exist_ok=True)
 
-        # Start download in a separate thread
-        download_thread = Thread(
-            target=self.download_manager.download_playlist,
-            args=(
-                playlist_url,
-                output_dir,
-                format_option,
-                self.selected_videos,
-                save_thumbnail,
-            ),
-        )
-        download_thread.daemon = True
-        download_thread.start()
+            # Update UI
+            self.status_var.set(STATUS_DOWNLOADING)
+            self.progress_var.set(0)
+            self.progress_info.config(text="Starting download...")
+
+            # Enable/disable buttons
+            self.download_button.config(state=tk.DISABLED)
+            self.preview_button.config(state=tk.DISABLED)
+            self.csv_download_button.config(state=tk.DISABLED)
+            self.pause_button.config(state=tk.NORMAL, text=BUTTON_PAUSE)
+            self.stop_button.config(state=tk.NORMAL)
+
+            # Reset pause state
+            self.is_paused = False
+
+            # Start download in a separate thread
+            download_thread = Thread(
+                target=self.download_manager.download_playlist,
+                args=(
+                    playlist_url,
+                    output_dir,
+                    format_option,
+                    self.selected_videos,
+                    save_thumbnail,
+                ),
+            )
+            download_thread.daemon = True
+            download_thread.start()
 
     def update_status(self, status_info):
         """Update status information from download manager"""
@@ -1461,6 +1980,7 @@ class PlaylistDownloaderApp:
         # Update UI
         self.download_button.config(state=tk.NORMAL)
         self.preview_button.config(state=tk.NORMAL)
+        self.csv_download_button.config(state=tk.NORMAL)
         self.pause_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.DISABLED)
 
@@ -1502,12 +2022,17 @@ class PlaylistDownloaderApp:
 
 
 def main():
+    # Initialize CSV file on first run
+    initialize_csv_file()
+
     root = tk.Tk()
 
     try:
         # Determine base path (handles both script & bundled exe)
         if getattr(sys, "frozen", False):
-            base_path = sys._MEIPASS  # Running as bundled app (exe)
+            base_path = getattr(
+                sys, "_MEIPASS", os.path.abspath(".")
+            )  # Running as bundled app (exe)
         else:
             base_path = os.path.abspath(".")  # Running as script
 
@@ -1522,7 +2047,7 @@ def main():
         if os.path.exists(icon_png_path):
             icon_img = Image.open(icon_png_path)
             icon_photo = ImageTk.PhotoImage(icon_img)
-            root.iconphoto(True, icon_photo)
+            root.iconphoto(True, icon_photo)  # type: ignore
 
     except Exception as e:
         print(f"Could not set application icon: {e}")

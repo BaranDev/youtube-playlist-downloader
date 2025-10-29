@@ -1,137 +1,131 @@
 <p align="center">
-  <img src="docs/images/icon.png" alt="YouTube Playlist Downloader Logo" width="160"/>
+  <img src="docs/images/icon.png" alt="PlaylistGrab Logo" width="160"/>
 </p>
 
-# YouTube Playlist Downloader
+# PlaylistGrab
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/) [![yt-dlp](https://img.shields.io/badge/yt--dlp-latest-red.svg)](https://github.com/yt-dlp/yt-dlp)
+**Your playlists, your device, your time.**
 
-A powerful, user-friendly desktop application for downloading YouTube playlists with advanced features for customization and control.
+Save entire YouTube playlists to watch offline. No ads, no buffering, no internet needed.
 
-## Screenshot
+## What Does It Do?
+
+PlaylistGrab downloads YouTube videos and playlists directly to your computer. Perfect for long flights, road trips, or anywhere without reliable internet. You pick the quality, choose where to save them, and watch whenever you want.
+
+Think of it like recording your favorite TV shows, but for YouTube playlists.
 
 <p align="center">
-  <img src="docs/images/screenshot.jpg" alt="YouTube Playlist Downloader Screenshot" width="400"/>
+  <img src="docs/images/screenshot.png" alt="PlaylistGrab Screenshot" width="600"/>
 </p>
 
-## Installation for Users
+## Getting Started
 
-### Windows
+### The Easy Way
 
-1. Download the latest release from the [Releases page](https://github.com/barandev/youtube-playlist-downloader/releases)
-2. Run the installer or extract the portable version
-3. Launch `YouTube Playlist Downloader.exe`
+**Windows:** Just double-click `run.bat` and you're done.
 
-### From Source
+**Linux/Mac:** Open a terminal in this folder and run `./run.sh` (you might need to run `chmod +x run.sh` first to make it executable).
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/barandev/youtube-playlist-downloader.git
-   cd youtube-playlist-downloader
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the application:
-   ```bash
-   python main.py
-   ```
+The first time takes a minute to set everything up, then the app opens automatically.
 
-## Requirements
+That's it. Seriously.
 
-- Python 3.6 or higher
-- yt-dlp
-- FFmpeg (for video/audio processing)
-- Tkinter (included with most Python installations)
+### What You Need
 
-## Usage
+- Windows (7, 10, or 11), Linux, or Mac computer
+- Internet connection (just for downloading, obviously)
+- About 100MB of free space for the app itself
 
-1. **Enter a YouTube playlist URL** in the input field
-2. **Click "Get Videos"** to preview the playlist contents
-3. **Select which videos** you want to download (all are selected by default)
-4. **Choose your preferred quality** from the dropdown menu
-5. **Set the output directory** where files will be saved
-6. **Click "Download"** to start the download process
-7. Use the **pause/resume and cancel buttons** to control active downloads
-8. Track download **progress, speed, and estimated time** in real-time
-9. Access **download history** to re-download previous playlists
+The app will work fine on pretty much any computer from the last decade.
 
-## Development
+## How to Use It
 
-### Requirements
-- Python 3.6+
-- pip
+### Downloading from a YouTube Playlist
 
-### Setup Development Environment
-```bash
-# Clone the repository
-git clone https://github.com/barandev/youtube-playlist-downloader.git
-cd youtube-playlist-downloader
-```
+1. Open YouTube and find a playlist you want to download
+2. Copy the playlist URL from your browser's address bar
+3. Paste it into the "Playlist URL" box in PlaylistGrab
+4. Click "Get Videos" and wait a few seconds
+5. You'll see all the videos in the playlist with thumbnails
+6. Pick which ones you want (or leave them all selected)
+7. Choose your video quality from the dropdown menu
+   - Pick "Best Quality" if you have space and want the sharpest video
+   - Pick "HD 720p" for a good balance
+   - Pick "360p" if you're tight on storage
+   - Pick "Audio Only" if you just want the sound
+8. Click "Browse" if you want to change where files are saved
+9. Hit the big "Download" button
+10. Go make some coffee. The app will show you the progress
 
-# Create a virtual environment
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-# Install dependencies
-```bash
-pip install -r requirements.txt
-```
+### Downloading from Your Own List
 
+Sometimes you want to download specific videos, not a whole playlist. Here's how:
 
-### Build Executable
-```bash
-# Install PyInstaller
-pip install pyinstaller
+1. Click "Open CSV" button
+2. A spreadsheet file opens up (don't worry, it's simple)
+3. Type the video title in the first column, paste the video URL in the second
+4. Add as many videos as you want, one per row
+5. Save and close the file
+6. Back in PlaylistGrab, click "Download from CSV"
+7. Select which videos you want
+8. Click "Download"
 
-# Build the executable
-pyinstaller --onefile --windowed --icon=docs/images/icon.ico main.py
-```
+The videos will be numbered in the order you listed them, which is handy for making your own playlists.
 
-# Security Information: False Positive Detection
+### During the Download
 
-Some antivirus software may flag YouTube Playlist Downloader as suspicious or potentially unwanted. This is a **false positive** detection that commonly affects YouTube downloading applications and other utilities that convert Python code to executable files.
+- The progress bar shows how far along you are
+- You can pause and resume if you need to do something else
+- Click "Cancel" if you change your mind
+- The app shows download speed and how much time is left
+- You can use your computer normally while it downloads
 
-## VirusTotal Scan Results
+### After Downloading
 
-I've scanned our application with VirusTotal, and you can view the results here:
-[VirusTotal Scan Results](https://www.virustotal.com/gui/file/17cc64e742c228b1204128cef409d3aebe4f9f341161a4a6fdad2e788e8a4c2d/detection)
+Your videos are saved in the folder you chose (default is your Downloads folder in a "YouTube" subfolder). Just open that folder and double-click any video to watch it.
 
-## Why This Happens
+The app also keeps a history of what you've downloaded, so you can check the "Download History" tab to see your past downloads.
 
-1. **PyInstaller Packaging**: Converting Python code to an executable creates patterns that some antivirus heuristics flag as suspicious
-2. **Video Downloading Functionality**: Applications that download content from websites are often categorized similarly to potentially unwanted programs
-3. **File System Operations**: Our app creates folders and writes files, actions that security software monitors closely
-4. **External Libraries**: We use `yt-dlp` which is sometimes flagged due to its video downloading capabilities
+## Common Questions
 
-## How To Use If Your Antivirus Blocks It
+**How much does it cost?**  
+Nothing. It's completely free.
 
-1. **Add an Exception**: Add the application to your antivirus whitelist/exceptions list
-2. **Build from Source**: Follow the instructions in this README to build the application yourself
-3. **Use Portable Version**: Try the portable version which may trigger fewer detections
-4. **Report False Positive**: Consider reporting this as a false positive to your antivirus provider
+**Do I need to keep opening the app?**  
+No, just run `run.bat` (Windows) or `./run.sh` (Linux/Mac) each time. It remembers everything.
 
-## Contributing
+**Can I download just one video?**  
+Yes. Either paste a single video URL instead of a playlist, or use the CSV method to list just one video.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+**What if my antivirus flags it?**  
+This happens sometimes with download apps. The app is safe - you can check the code yourself since it's open source. Just tell your antivirus to allow it.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+**Will this work on Mac or Linux?**  
+Yes! Use the `run.sh` script. Open a terminal, navigate to the folder, and run `./run.sh`
 
-## License
+**Can I pick specific videos from a playlist?**  
+Yes. After clicking "Get Videos", just uncheck the ones you don't want before downloading.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**What video quality should I choose?**  
+If you're watching on a TV or big monitor, go with Best Quality or HD 1080p. For phones or tablets, HD 720p is plenty. If storage is tight, 480p or 360p still looks decent on smaller screens.
 
-## Acknowledgments
+**How long does it take?**  
+Depends on your internet speed and video size. A 10-minute HD video usually takes 2-5 minutes to download.
 
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) for the powerful YouTube downloading capabilities
-- [FFmpeg](https://ffmpeg.org/) for video and audio processing
-- [Tkinter](https://docs.python.org/3/library/tkinter.html) for the GUI framework
+**Where do the files go?**  
+By default: `C:\Users\YourName\Downloads\YouTube\`  
+You can change this by clicking the Browse button.
 
-## Disclaimer
+## Legal Stuff
 
-This tool is for personal use only. Please respect **YouTube's Terms of Service** and **copyright laws** when downloading content.
+This app is for personal use. Don't download videos you don't have permission to download. Respect creators' rights and YouTube's rules. If you're downloading someone else's content, make sure you're allowed to.
+
+Use common sense and be decent.
+
+## Support
+
+Having trouble? Found a bug? Open an issue on GitHub and describe what's happening. Include what you were trying to do and any error messages you saw.
+
+## Credits
+
+Built with yt-dlp and FFmpeg. Thanks to everyone who contributes to those projects.
